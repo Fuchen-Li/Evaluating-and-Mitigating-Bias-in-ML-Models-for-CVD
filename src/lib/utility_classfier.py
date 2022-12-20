@@ -1,16 +1,27 @@
 import numpy as np
-from sklearn.metrics import classification_report
-from sklearn import metrics, model_selection
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix
 from time import time
-from sklearn import ensemble
+
+from sklearn import metrics, model_selection
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_auc_score
+
+from sklearn import svm
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import ensemble
+from sklearn.ensemble import GradientBoostingClassifier as gbc
+from sklearn.ensemble import AdaBoostClassifier as adb
+
+import pickle
+
 
 def rank_features(clf, feature_list, top_feature=10, abs=False):
     """
@@ -51,10 +62,15 @@ def rank_features(clf, feature_list, top_feature=10, abs=False):
 
 
 # logic regression
-def logic_regression(X_train, y_train, X_valid, y_valid, c=10, feature_list=None, top_features_num=20):
+def logic_regression(X_train, y_train, X_valid, y_valid, c=10, feature_list=None, top_features_num=20, dump_model = False, file_name=""):
     t0 = time()
-    clf = LogisticRegression(C=c)
-    clf.fit(X_train, y_train)
+
+    clf = LogisticRegression(solver = 'saga', penalty = 'l1', l1_ratio = 0.8)
+    clf = clf.fit(X_train, y_train)
+    
+    if dump_model:
+        pickle.dump(clf, open(file_name, 'wb'))
+        
     p_train = clf.predict_proba(X_train)
     p_valid = clf.predict_proba(X_valid)
     y_score = clf.predict_proba(X_valid)[:, 1]
@@ -67,9 +83,9 @@ def logic_regression(X_train, y_train, X_valid, y_valid, c=10, feature_list=None
     print("Confusion_matrix")
     print(confusion_matrix(y_valid, y_predict_valid))
     print("done in %fs" % (time() - t0))
-    if feature_list is not None:
-        rank_features(clf, feature_list, top_features_num)
-    return y_score
+    #if feature_list is not None:
+        #rank_features(clf, feature_list, top_features_num)
+    return clf
 
 
 #decision tree
@@ -89,17 +105,21 @@ def decision_tree(X_train, y_train, X_valid, y_valid, c=10, feature_list=None, t
     print("Confusion_matrix")
     print(confusion_matrix(y_valid, y_predict_valid))
     print("done in %fs" % (time() - t0))
-    if feature_list is not None:
-        rank_features(clf, feature_list, top_features_num)
+    #if feature_list is not None:
+        #rank_features(clf, feature_list, top_features_num)
     return y_score
 
 
 # random forest tree
-def random_forest(X_train, y_train, X_valid, y_valid,feature_list=None,top_features_num=20,
-                  bootstrap=True,criterion='entropy', max_features=10, min_samples_split=10):
+def random_forest(X_train, y_train, X_valid, y_valid, feature_list=None,top_features_num=20, bootstrap=True, dump_model = False, file_name=""):
     t0 = time()
-    clf = ensemble.RandomForestClassifier(n_estimators=100, bootstrap=True, criterion='entropy', max_features=10, min_samples_split=10)
+       
+    clf = ensemble.RandomForestClassifier(n_estimators = 50, max_features = 'sqrt', max_depth = 8, criterion = 'entropy')   
     clf = clf.fit(X_train, y_train)
+        
+    if dump_model:
+        pickle.dump(clf, open(file_name, 'wb'))
+        
     y_pred = clf.predict(X_valid)
     # np.savetxt("random.csv", y_pred.astype(int), fmt='%i', delimiter=",")
     print("Classification report")
@@ -108,37 +128,20 @@ def random_forest(X_train, y_train, X_valid, y_valid,feature_list=None,top_featu
     print(confusion_matrix(y_valid, y_pred))
     print("done in %fs" % (time() - t0))
     y_score = clf.predict_proba(X_valid)[:, 1]
-    if feature_list is not None:
-        selected_features = rank_features(clf, feature_list, top_features_num)
-    return y_score
+    #if feature_list is not None:
+        #selected_features = rank_features(clf, feature_list, top_features_num)
+    return clf
 
 
-# SVM
-from sklearn import svm
-from sklearn.metrics import roc_auc_score
-
-
-def my_svm(X_train, y_train, X_test, y_test, kernel):
+def gradiant_boosting(X_train, y_train, X_valid, y_valid, feature_list=None,top_features_num=20, dump_model = False, file_name=""):
     t0 = time()
-    #     _train = preprocessing.normalize(X_train, norm='l2')
-    #     _test = preprocessing.normalize(X_test, norm='l2')
-    clf = svm.SVC(kernel=kernel, C=1, probability=True).fit(X_train, y_train)
-    y_score_svm = clf.predict_proba(X_test)[:, 1]
-    y_pred = clf.predict(X_test)
-    # np.savetxt("svm.csv", y_pred.astype(int), fmt='%i', delimiter=",")
-    # np.savetxt("svmm.csv", y_score_svm, delimiter=",")
-    print(classification_report(y_test, y_pred))
-    print("done in %fs" % (time() - t0))
-    return y_score_svm
-
-
-from sklearn.ensemble import GradientBoostingClassifier as gbc
-
-
-def gradiant_boosting(X_train, y_train, X_valid, y_valid,feature_list=None,top_features_num=20):
-    t0 = time()
-    clf = gbc()
+    
+    clf = gbc(max_features = 9, max_depth = 8, n_estimators = 500, learning_rate = 0.01, subsample = 0.9)    
     clf = clf.fit(X_train, y_train)
+    
+    if dump_model:
+        pickle.dump(clf, open(file_name, 'wb'))
+
     y_pred = clf.predict(X_valid)
     # np.savetxt("random.csv", y_pred.astype(int), fmt='%i', delimiter=",")
     print("Classification report")
@@ -147,12 +150,9 @@ def gradiant_boosting(X_train, y_train, X_valid, y_valid,feature_list=None,top_f
     print(confusion_matrix(y_valid, y_pred))
     print("done in %fs" % (time() - t0))
     y_score = clf.predict_proba(X_valid)[:, 1]
-    if feature_list is not None:
-        rank_features(clf, feature_list, top_features_num)
-    return y_score
-
-
-from sklearn.ensemble import AdaBoostClassifier as adb
+    #if feature_list is not None:
+        #rank_features(clf, feature_list, top_features_num)
+    return clf
 
 
 def ada_boosting(X_train, y_train, X_valid, y_valid,feature_list=None):
@@ -211,6 +211,23 @@ def knn(X_train, y_train, X_valid, y_valid, feature_list=None):
     if feature_list is not None:
         rank_features(neigh, feature_list, 20)
     return y_score
+
+
+
+def my_svm(X_train, y_train, X_test, y_test, kernel):
+    t0 = time()
+    #     _train = preprocessing.normalize(X_train, norm='l2')
+    #     _test = preprocessing.normalize(X_test, norm='l2')
+    clf = svm.SVC(kernel=kernel, C=1, probability=True).fit(X_train, y_train)
+    y_score_svm = clf.predict_proba(X_test)[:, 1]
+    y_pred = clf.predict(X_test)
+    # np.savetxt("svm.csv", y_pred.astype(int), fmt='%i', delimiter=",")
+    # np.savetxt("svmm.csv", y_score_svm, delimiter=",")
+    print(classification_report(y_test, y_pred))
+    print("done in %fs" % (time() - t0))
+    return y_score_svm
+
+
 
 def compute_roc(y_test, y_score, method):
     fpr, tpr, _ = metrics.roc_curve(y_test.ravel(), y_score.ravel())

@@ -19,7 +19,7 @@ def get_optimal_threshold_f1(y_true, y_pred_score):
         y_pred[y_pred >= threshold] = 1
         y_pred[y_pred < threshold] = 0
         f1 = f1_score(y_true, y_pred)
-        print('threshold:{}, F1:{}'.format(threshold, f1))
+        #print('threshold:{}, F1:{}'.format(threshold, f1))
 
         if f1 > current_best_f1:
             current_best_f1 = f1
@@ -43,7 +43,7 @@ def get_optimal_threshold_Jvalue(y_true, y_pred_score):
         tpr = calculate_tpr(y_true, y_pred_score, threshold)
         fpr, fnr = calculate_fpr_fnr(y_true, y_pred_score, threshold)
         jvalue = tpr - fpr
-        print('threshold:{}, J-value:{}'.format(threshold, jvalue))
+        #print('threshold:{}, J-value:{}'.format(threshold, jvalue))
 
         if jvalue > current_best_j:
             current_best_j = jvalue
@@ -67,7 +67,7 @@ def get_optimal_threshold_Gmean(y_true, y_pred_score):
         tpr = calculate_tpr(y_true, y_pred_score, threshold)
         fpr, fnr = calculate_fpr_fnr(y_true, y_pred_score, threshold)
         gmeans = sqrt(tpr * (1 - fpr))
-        print('threshold:{}, G-mean:{}'.format(threshold, gmeans))
+        #print('threshold:{}, G-mean:{}'.format(threshold, gmeans))
 
         if gmeans > current_best_G:
             current_best_G = gmeans
